@@ -12,7 +12,7 @@ from typing import List, Dict, Any
 import json
 import asyncio
 import os
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from agent.agent import agent
 import fitz
 from langchain_core.documents import Document
@@ -31,15 +31,27 @@ app.add_middleware(
 )
 
 
+class Message(BaseModel):
+    text: str
+    sender: str  # 'user' or 'ai'
+
 class ChatRequest(BaseModel):
-    message: str
+    messages: List[Message]
 
 
 @app.post("/{conversion_id}/chat")
 async def chat(conversion_id: str, request: ChatRequest):
     """Streaming chat endpoint that returns real-time updates"""
     try:
-        inputs = {"messages": [HumanMessage(request.message)]}
+        # Convert frontend messages to LangChain messages
+        langchain_messages = []
+        for msg in request.messages:
+            if msg.sender == 'user':
+                langchain_messages.append(HumanMessage(content=msg.text))
+            elif msg.sender == 'ai':
+                langchain_messages.append(AIMessage(content=msg.text))
+        
+        inputs = {"messages": langchain_messages}
 
         async def generate_stream():
             async for chunk in agent.astream(

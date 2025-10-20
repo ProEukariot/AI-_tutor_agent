@@ -53,12 +53,18 @@ function App() {
     setMessages(prev => [...prev, loadingMessage])
     
     try {
+      // Prepare message history for backend
+      const messageHistory = messages.map(msg => ({
+        text: msg.text,
+        sender: msg.sender
+      }))
+      
       const response = await fetch(`http://localhost:8000/123/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: messageText }),
+        body: JSON.stringify({ messages: messageHistory }),
       })
 
       if (!response.ok) {
