@@ -3,8 +3,8 @@ from qdrant_client import QdrantClient
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
 from qdrant_client.models import VectorParams, Distance
-from langchain.storage import InMemoryStore
-from langchain.retrievers import ParentDocumentRetriever
+from langchain_core.stores import InMemoryByteStore
+# ParentDocumentRetriever not available in current version
 from agent.utils.rag.splitters import child_splitter
 import os
 
@@ -19,7 +19,7 @@ distance = Distance.COSINE
 
 # TODO:use global store
 # new store instance will lead to new mappings and retrievers each time
-store = InMemoryStore()
+store = InMemoryByteStore()
 
 
 
@@ -36,13 +36,11 @@ def add_documents(collection_name: str, docs: list[Document]):
         embedding=embeddings,
     )
 
-    parent_document_retriever = ParentDocumentRetriever(
-        vectorstore=vector_store,
-        docstore=store,
-        child_splitter=child_splitter,
-    )
-
-    parent_document_retriever.add_documents(docs)
+    # Split documents into smaller chunks
+    split_docs = child_splitter.split_documents(docs)
+    
+    # Add documents to vector store
+    vector_store.add_documents(split_docs)
 
 
 def get_documents(collection_name: str, query: str):
@@ -53,10 +51,6 @@ def get_documents(collection_name: str, query: str):
     )
 
     retriever = vector_store.as_retriever(search_kwargs={"k": 10})
-    parent_document_retriever = ParentDocumentRetriever(
-        vectorstore=vector_store,
-        docstore=store,
-        child_splitter=child_splitter,
-    )
-
-    return parent_document_retriever.invoke(query)
+    
+    # Retrieve documents directly from vector store
+    return retriever.invoke(query)
