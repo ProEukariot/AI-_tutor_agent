@@ -5,6 +5,18 @@ import MessageInput from './components/MessageInput'
 import DarkModeToggle from './components/DarkModeToggle'
 
 function App() {
+  // Get conversation_id from URL parameters or generate a default one
+  const urlParams = new URLSearchParams(window.location.search)
+  let conversationId = urlParams.get('conversation_id')
+  
+  // If no conversation_id provided, generate a unique default one
+  if (!conversationId) {
+    conversationId = `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    // Update the URL to include the generated conversation_id
+    const newUrl = new URL(window.location)
+    newUrl.searchParams.set('conversation_id', conversationId)
+    window.history.replaceState({}, '', newUrl)
+  }
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -59,7 +71,7 @@ function App() {
         sender: msg.sender
       }))
       
-      const response = await fetch(`http://localhost:8000/123/chat`, {
+      const response = await fetch(`http://localhost:8000/${conversationId}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
