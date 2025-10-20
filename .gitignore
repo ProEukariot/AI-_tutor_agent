@@ -1,0 +1,11 @@
+# environment variables
+.env
+.venv/
+
+# cache
+__pycache__/
+.mypy_cache/
+
+# IDE
+.vscode/
+.cursor/
