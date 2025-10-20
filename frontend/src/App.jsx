@@ -34,7 +34,7 @@ function App() {
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [])
 
-  const handleSendMessage = (messageText) => {
+  const handleSendMessage = async (messageText) => {
     const newMessage = {
       id: Date.now(),
       text: messageText,
@@ -43,16 +43,89 @@ function App() {
     }
     setMessages(prev => [...prev, newMessage])
     
-    // Simulate AI response
-    setTimeout(() => {
+    // Add loading message
+    const loadingMessage = {
+      id: Date.now() + 1,
+      text: "Thinking...",
+      sender: 'ai',
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, loadingMessage])
+    
+    try {
+      const response = await fetch(`http://localhost:8000/123/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: messageText }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to get response from server')
+      }
+
+      // Remove loading message
+      setMessages(prev => prev.filter(msg => msg.id !== loadingMessage.id))
+
+      // Handle streaming response
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let aiResponseText = ''
+      
       const aiResponse = {
-        id: Date.now() + 1,
-        text: "I received your message: " + messageText,
+        id: Date.now() + 2,
+        text: '',
         sender: 'ai',
         timestamp: new Date()
       }
       setMessages(prev => [...prev, aiResponse])
-    }, 1000)
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n')
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') {
+              return
+            }
+            
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.content) {
+                aiResponseText += parsed.content
+                setMessages(prev => 
+                  prev.map(msg => 
+                    msg.id === aiResponse.id 
+                      ? { ...msg, text: aiResponseText }
+                      : msg
+                  )
+                )
+              }
+            } catch (e) {
+              console.error('Error parsing streaming data:', e)
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+      // Remove loading message and show error
+      setMessages(prev => {
+        const filtered = prev.filter(msg => msg.id !== loadingMessage.id)
+        return [...filtered, {
+          id: Date.now() + 3,
+          text: "Sorry, I encountered an error. Please try again.",
+          sender: 'ai',
+          timestamp: new Date()
+        }]
+      })
+    }
   }
 
   const handleFileUpload = (files) => {
