@@ -3,6 +3,8 @@ import React, { useState, useRef } from 'react'
 function FileUpload({ onFileUpload }) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState([])
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadStatus, setUploadStatus] = useState(null)
   const fileInputRef = useRef(null)
 
   const handleDragOver = (e) => {
@@ -27,8 +29,20 @@ function FileUpload({ onFileUpload }) {
     handleFiles(files)
   }
 
-  const handleFiles = (files) => {
-    const newFiles = files.map(file => ({
+  const handleFiles = async (files) => {
+    // Filter for PDF files only (as per backend API)
+    const pdfFiles = files.filter(file => file.type === 'application/pdf')
+    
+    if (pdfFiles.length === 0) {
+      setUploadStatus({ type: 'error', message: 'Please upload PDF files only' })
+      return
+    }
+
+    if (pdfFiles.length !== files.length) {
+      setUploadStatus({ type: 'warning', message: 'Only PDF files are supported. Other files were ignored.' })
+    }
+
+    const newFiles = pdfFiles.map(file => ({
       id: Date.now() + Math.random(),
       name: file.name,
       size: file.size,
@@ -37,7 +51,54 @@ function FileUpload({ onFileUpload }) {
     }))
     
     setUploadedFiles(prev => [...prev, ...newFiles])
-    onFileUpload(files)
+    
+    // Upload files to backend
+    await uploadFilesToBackend(pdfFiles)
+  }
+
+  const uploadFilesToBackend = async (files) => {
+    setIsUploading(true)
+    setUploadStatus({ type: 'uploading', message: 'Uploading files...' })
+
+    try {
+      const formData = new FormData()
+      files.forEach(file => {
+        formData.append('files', file)
+      })
+
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+      const response = await fetch(`${backendUrl}/123/upload-documents`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`)
+      }
+
+      const result = await response.json()
+      setUploadStatus({ 
+        type: 'success', 
+        message: `Successfully uploaded ${result.files} file(s)` 
+      })
+      
+      // Call the parent callback
+      onFileUpload(files)
+
+    } catch (error) {
+      console.error('Upload error:', error)
+      setUploadStatus({ 
+        type: 'error', 
+        message: `Upload failed: ${error.message}` 
+      })
+    } finally {
+      setIsUploading(false)
+      
+      // Clear status after 5 seconds
+      setTimeout(() => {
+        setUploadStatus(null)
+      }, 5000)
+    }
   }
 
   const removeFile = (fileId) => {
@@ -57,16 +118,25 @@ function FileUpload({ onFileUpload }) {
       <h3>File Upload</h3>
       
       <div
-        className={`drop-zone ${isDragOver ? 'drag-over' : ''}`}
+        className={`drop-zone ${isDragOver ? 'drag-over' : ''} ${isUploading ? 'uploading' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => !isUploading && fileInputRef.current?.click()}
       >
         <div className="drop-zone-content">
-          <div className="upload-icon">📁</div>
-          <p>Drag and drop files here</p>
-          <p className="or-text">or click to browse</p>
+          {isUploading ? (
+            <>
+              <div className="upload-spinner"></div>
+              <p>Uploading files...</p>
+            </>
+          ) : (
+            <>
+              <div className="upload-icon">📁</div>
+              <p>Drag and drop PDF files here</p>
+              <p className="or-text">or click to browse</p>
+            </>
+          )}
         </div>
       </div>
 
@@ -74,8 +144,10 @@ function FileUpload({ onFileUpload }) {
         ref={fileInputRef}
         type="file"
         multiple
+        accept=".pdf,application/pdf"
         onChange={handleFileSelect}
         style={{ display: 'none' }}
+        disabled={isUploading}
       />
 
       {uploadedFiles.length > 0 && (
@@ -90,11 +162,20 @@ function FileUpload({ onFileUpload }) {
               <button
                 className="remove-file"
                 onClick={() => removeFile(file.id)}
+                disabled={isUploading}
               >
                 ×
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Upload Status Indicator */}
+      {uploadStatus && (
+        <div className={`upload-status ${uploadStatus.type}`}>
+          {uploadStatus.type === 'uploading' && <div className="status-spinner"></div>}
+          <span className="status-message">{uploadStatus.message}</span>
         </div>
       )}
     </div>

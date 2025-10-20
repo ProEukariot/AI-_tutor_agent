@@ -6,10 +6,12 @@ dotenv.load_dotenv()
 
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any
 import json
 import asyncio
+import os
 from langchain_core.messages import HumanMessage
 from agent.agent import agent
 import fitz
@@ -17,6 +19,16 @@ from langchain_core.documents import Document
 from agent.utils.rag.vector_store import add_documents
 
 app = FastAPI(title="Agent API", description="FastAPI server for the LangGraph agent")
+
+# Configure CORS
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[frontend_url],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class ChatRequest(BaseModel):
