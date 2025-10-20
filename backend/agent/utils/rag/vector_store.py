@@ -3,6 +3,9 @@ from qdrant_client import QdrantClient
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
 from qdrant_client.models import VectorParams, Distance
+from langchain.storage import InMemoryStore
+from langchain.retrievers import ParentDocumentRetriever
+from agent.utils.rag.splitters import child_splitter
 import os
 
 
@@ -13,6 +16,11 @@ embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
 vector_size = 1536
 distance = Distance.COSINE
+
+# TODO:use global store
+# new store instance will lead to new mappings and retrievers each time
+store = InMemoryStore()
+
 
 
 def add_documents(collection_name: str, docs: list[Document]):
@@ -28,7 +36,13 @@ def add_documents(collection_name: str, docs: list[Document]):
         embedding=embeddings,
     )
 
-    vector_store.add_documents(docs)
+    parent_document_retriever = ParentDocumentRetriever(
+        vectorstore=vector_store,
+        docstore=store,
+        child_splitter=child_splitter,
+    )
+
+    parent_document_retriever.add_documents(docs)
 
 
 def get_documents(collection_name: str, query: str):
@@ -39,5 +53,10 @@ def get_documents(collection_name: str, query: str):
     )
 
     retriever = vector_store.as_retriever(search_kwargs={"k": 10})
+    parent_document_retriever = ParentDocumentRetriever(
+        vectorstore=vector_store,
+        docstore=store,
+        child_splitter=child_splitter,
+    )
 
-    return retriever.invoke(query)
+    return parent_document_retriever.invoke(query)
