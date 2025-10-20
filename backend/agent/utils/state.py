@@ -7,7 +7,6 @@ from langchain_core.documents import Document
 
 class TutorState(TypedDict):
     messages: Annotated[list[BaseMessage], operator.add]
-    retrieved_docs: list[Document]
 
 
 class ReflectionOutput(BaseModel):

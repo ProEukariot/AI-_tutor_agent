@@ -38,6 +38,6 @@ def get_documents(collection_name: str, query: str):
         embedding=embeddings,
     )
 
-    retriever = vector_store.as_retriever(search_kwargs={"k": 5})
+    retriever = vector_store.as_retriever(search_kwargs={"k": 10})
 
     return retriever.invoke(query)
