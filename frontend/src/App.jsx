@@ -71,44 +71,90 @@ function App() {
       // Handle streaming response
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
-      let aiResponseText = ''
+      let buffer = ''
+      let messageContents = [] // Store all message contents
       
       const aiResponse = {
         id: Date.now() + 2,
-        text: '',
+        text: 'Processing your request...',
         sender: 'ai',
         timestamp: new Date()
       }
       setMessages(prev => [...prev, aiResponse])
 
+      // Function to get status message based on node
+      const getStatusMessage = (node) => {
+        switch (node) {
+          case 'tutor':
+            return 'Generating response...'
+          case 'reflection':
+            return 'Refining answer...'
+          case 'tutor_llm':
+            return 'Thinking about your question...'
+          case 'tool_node':
+            return 'Searching knowledge base...'
+          case 'reflection_llm':
+            return 'Reviewing response quality...'
+          default:
+            return 'Processing...'
+        }
+      }
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
 
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n')
+        // Decode the chunk and add to buffer
+        buffer += decoder.decode(value, { stream: true })
+        
+        // Process complete lines
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || '' // Keep incomplete line in buffer
         
         for (const line of lines) {
+          if (line.trim() === '') continue // Skip empty lines
+          
           if (line.startsWith('data: ')) {
-            const data = line.slice(6)
+            const data = line.slice(6).trim()
+            
             if (data === '[DONE]') {
+              console.log('Stream completed')
+              // Show the second-to-last message content (previous one)
+              const finalContent = messageContents.length >= 2 
+                ? messageContents[messageContents.length - 2] 
+                : messageContents[messageContents.length - 1] || 'Response complete!'
+              
+              setMessages(prev => 
+                prev.map(msg => 
+                  msg.id === aiResponse.id 
+                    ? { ...msg, text: finalContent }
+                    : msg
+                )
+              )
               return
             }
             
             try {
               const parsed = JSON.parse(data)
-              if (parsed.content) {
-                aiResponseText += parsed.content
+              console.log('Received chunk:', parsed)
+              
+              if (parsed.node) {
+                const statusMessage = getStatusMessage(parsed.node)
                 setMessages(prev => 
                   prev.map(msg => 
                     msg.id === aiResponse.id 
-                      ? { ...msg, text: aiResponseText }
+                      ? { ...msg, text: statusMessage }
                       : msg
                   )
                 )
               }
+              
+              // Capture the content for final display
+              if (parsed.content) {
+                messageContents.push(parsed.content)
+              }
             } catch (e) {
-              console.error('Error parsing streaming data:', e)
+              console.error('Error parsing streaming data:', e, 'Data:', data)
             }
           }
         }
