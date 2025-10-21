@@ -65,8 +65,8 @@ function App() {
     setMessages(prev => [...prev, loadingMessage])
     
     try {
-      // Prepare message history for backend
-      const messageHistory = messages.map(msg => ({
+      // Prepare message history for backend (include the new user message)
+      const messageHistory = [...messages, newMessage].map(msg => ({
         text: msg.text,
         sender: msg.sender
       }))
