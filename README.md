@@ -26,8 +26,6 @@
 
 (app uses default http://localhost:6333 qdrant url which can be changed in .env)
 
-To read project description got to proj-description.md
-
 ## How to run evaluation
 
 1. Run the app (instructions above)
@@ -41,3 +39,8 @@ To read project description got to proj-description.md
 Test results will be wrong if uploaded documents into drop area and backend/test_data directory differ. This may cause wrong scores
 
 4. Run the notebook
+
+## Main app description
+
+To read project description go to proj-description.md
+
