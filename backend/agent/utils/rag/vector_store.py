@@ -5,9 +5,8 @@ from langchain_core.documents import Document
 from qdrant_client.models import VectorParams, Distance
 from langchain_core.stores import InMemoryByteStore
 # ParentDocumentRetriever not available in current version
-from agent.utils.rag.splitters import child_splitter
 import os
-
+from agent.utils.rag.splitters import text_splitter
 
 QDRANT_URL = os.getenv("QDRANT_URL")
 
@@ -19,7 +18,7 @@ distance = Distance.COSINE
 
 # TODO:use global store
 # new store instance will lead to new mappings and retrievers each time
-store = InMemoryByteStore()
+# store = InMemoryByteStore()
 
 
 
@@ -37,7 +36,7 @@ def add_documents(collection_name: str, docs: list[Document]):
     )
 
     # Split documents into smaller chunks
-    split_docs = child_splitter.split_documents(docs)
+    split_docs = text_splitter.split_documents(docs)
     
     # Add documents to vector store
     vector_store.add_documents(split_docs)
@@ -50,7 +49,7 @@ def get_documents(collection_name: str, query: str):
         embedding=embeddings,
     )
 
-    retriever = vector_store.as_retriever(search_kwargs={"k": 10})
+    retriever = vector_store.as_retriever(search_kwargs={"k": 15})
     
     # Retrieve documents directly from vector store
     return retriever.invoke(query)
