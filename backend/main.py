@@ -5,9 +5,11 @@ dotenv.load_dotenv()
 from agent.agent import agent
 from langchain_core.messages import HumanMessage, AIMessage
 
+q = "Explain me the concept of foreign keys"
+
 inputs = {
     "messages": [
-        HumanMessage("Explain me the concept of foreign keys"),
+        HumanMessage(q),
     ]
 }
 
