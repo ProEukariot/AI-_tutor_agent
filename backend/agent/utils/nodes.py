@@ -5,9 +5,10 @@ from agent.utils.prompts import reflection_prompt, tutor_prompt, reflection_mess
 from langchain_core.messages import HumanMessage, ToolMessage
 from agent.utils.tools import knowledge_base_search
 from langgraph.prebuilt import ToolNode
+from agent.utils.tools import tavily_tool
 
 llm = ChatOpenAI(model="gpt-4.1-nano", temperature=0.8)
-tools = [knowledge_base_search]
+tools = [knowledge_base_search, tavily_tool]
 
 tool_node = ToolNode(tools)
 

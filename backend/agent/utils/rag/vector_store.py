@@ -5,18 +5,20 @@ from langchain_core.documents import Document
 from qdrant_client.models import VectorParams, Distance
 from langchain_core.stores import InMemoryByteStore
 
-# ParentDocumentRetriever not available in current version
 import os
 from agent.utils.rag.splitters import text_splitter
 
-from langchain.retrievers import ContextualCompressionRetriever
-from langchain_cohere import CohereRerank
+
+import cohere
+
+# from langchain_cohere import CohereRerank
+# from langchain_community.retrievers import ContextualCompressionRetriever
 
 QDRANT_URL = os.getenv("QDRANT_URL")
 
 client = QdrantClient(url=QDRANT_URL)
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-reranker = CohereRerank(model="rerank-v3.5")
+co = cohere.ClientV2()
 
 vector_size = 1536
 distance = Distance.COSINE
@@ -55,10 +57,11 @@ def get_documents(collection_name: str, query: str):
 
     retriever = vector_store.as_retriever(search_kwargs={"k": 15})
 
-    compression_retriever = ContextualCompressionRetriever(
-        base_compressor=reranker, base_retriever=retriever
+    retrieved_docs = retriever.invoke(query)
+
+    compressed_docs = co.rerank(
+        model="rerank-v3.5", query=query, documents=retrieved_docs, top_n=5
     )
 
-    compressed_docs = compression_retriever.get_relevant_documents(query)
-
+    # return retrieved_docs
     return compressed_docs

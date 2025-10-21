@@ -1,6 +1,8 @@
 from langchain.tools import tool
 from agent.utils.rag.vector_store import get_documents
+from langchain_community.tools.tavily_search import TavilySearchResults
 
+tavily_tool = TavilySearchResults(max_results=5)
 
 @tool
 def knowledge_base_search(query: str):

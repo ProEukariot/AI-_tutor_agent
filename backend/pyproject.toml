@@ -20,5 +20,6 @@ dependencies = [
     "qdrant-client>=1.15.1",
     "ragas>=0.3.7",
     "rapidfuzz>=3.14.1",
+    "tavily-python>=0.7.12",
     "uvicorn[standard]>=0.24.0",
 ]
