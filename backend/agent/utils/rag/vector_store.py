@@ -67,20 +67,18 @@ def get_documents(collection_name: str, query: str):
         return []
 
 
-    compressed_docs = co.rerank(
+    reranker_scores = co.rerank(
         model="rerank-v3.5", query=query, documents=doc_contents, top_n=5
     )
     
-    # Cohere rerank returns a list of results with index and relevance_score
-    # Convert back to Document objects for consistency with the rest of the system
     reranked_docs = []
-    for result in compressed_docs.results:
+    for result in reranker_scores.results:
         if result.index < len(retrieved_docs):
-            # Create a new Document with the reranked content
             original_doc = retrieved_docs[result.index]
             reranked_docs.append(Document(
                 page_content=original_doc.page_content,
                 metadata=original_doc.metadata
             ))
-    
+
+    # return retrieved_docs
     return reranked_docs
