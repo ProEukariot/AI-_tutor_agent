@@ -52,6 +52,7 @@ async def chat(conversion_id: str, request: ChatRequest):
                 langchain_messages.append(AIMessage(content=msg.text))
         
         inputs = {"messages": langchain_messages}
+        print(request.messages)
 
         async def generate_stream():
             async for chunk in agent.astream(

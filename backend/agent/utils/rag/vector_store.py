@@ -3,7 +3,6 @@ from qdrant_client import QdrantClient
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
 from qdrant_client.models import VectorParams, Distance
-from langchain_core.stores import InMemoryByteStore
 
 import os
 from agent.utils.rag.splitters import text_splitter
@@ -59,9 +58,29 @@ def get_documents(collection_name: str, query: str):
 
     retrieved_docs = retriever.invoke(query)
 
-    compressed_docs = co.rerank(
-        model="rerank-v3.5", query=query, documents=retrieved_docs, top_n=5
-    )
+    # Extract page_content from documents and filter out empty/whitespace-only content
+    doc_contents = [doc.page_content.strip() for doc in retrieved_docs if doc.page_content.strip()]
+    
+    # If no valid documents found, return empty list
+    if not doc_contents:
+        print("No valid documents found after filtering")
+        return []
 
-    # return retrieved_docs
-    return compressed_docs
+
+    compressed_docs = co.rerank(
+        model="rerank-v3.5", query=query, documents=doc_contents, top_n=5
+    )
+    
+    # Cohere rerank returns a list of results with index and relevance_score
+    # Convert back to Document objects for consistency with the rest of the system
+    reranked_docs = []
+    for result in compressed_docs.results:
+        if result.index < len(retrieved_docs):
+            # Create a new Document with the reranked content
+            original_doc = retrieved_docs[result.index]
+            reranked_docs.append(Document(
+                page_content=original_doc.page_content,
+                metadata=original_doc.metadata
+            ))
+    
+    return reranked_docs
